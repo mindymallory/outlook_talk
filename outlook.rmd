@@ -1,0 +1,659 @@
+---
+title: "Outlook"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(lubridate)
+options(digits=8)
+purduegold <- '#CEB888'
+colorscheme <- purduegold
+```
+
+# Get Historical WASDE's 
+
+Check "https://www.usda.gov/oce/commodity-markets/wasde/historical-wasde-report-data" to get current filenames
+```{r}
+# Previous Years
+key <- '9C32CCDF-EFFD-4BCF-A943-5A5C33FD7046'
+
+download.file("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2010-04-to-2015-12.zip","wasde_old.zip")
+unzip("wasde_old.zip")
+wasde_old <- read.csv("oce-wasde-report-data-2010-04-to-2015-12.csv")
+
+
+download.file("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2016-01-to-2020-12.zip","wasde.zip")
+unzip("wasde.zip")
+wasde <- read.csv("oce-wasde-report-data-2016-01-to-2020-12.csv")
+
+# Current Year
+wasde <- wasde_old %>% 
+  rbind(wasde) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-01.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-02.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-03.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-04.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-05.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-06.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-07.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-08.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-09.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-10.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-11.csv")) %>% 
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2021-12.csv")) %>%
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2022-01.csv")) %>%
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2022-02.csv")) %>%
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2022-03.csv")) %>%
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2022-04.csv")) %>%
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2022-05.csv")) %>%
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2022-06.csv")) %>%
+  rbind(read.csv("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2022-07.csv")) 
+
+  
+
+tail(wasde$WasdeNumber, 1)
+```
+
+
+## Corn Current Month's Table
+```{r}
+#US Corn
+prevwasde <- wasde %>% filter(WasdeNumber == (tail(wasde$WasdeNumber, 1)-1)) %>% 
+  filter(ReportTitle == "U.S. Feed Grain and Corn Supply and Use") %>% 
+  filter(Commodity == "Corn") %>% 
+  mutate(MarketYearProjEst = paste0(substr(ReportDate,1,3), "'s ", MarketYear,ProjEstFlag)) %>%
+  mutate(RowOrder = case_when(Attribute == "Area Planted" ~ 1,
+                              Attribute == "Area Harvested" ~ 2,
+                              Attribute == "Yield per Harvested Acre" ~ 3,
+                              Attribute == "Beginning Stocks" ~ 4,
+                              Attribute == "Production" ~ 5,
+                              Attribute == "Imports" ~ 6,
+                              Attribute == "Supply, Total" ~ 7,
+                              Attribute == "Feed and Residual" ~ 8,
+                              Attribute == "Food, Seed & Industrial" ~ 9,
+                              Attribute == "Ethanol & by-products" ~ 10,
+                              Attribute == "Domestic, Total" ~ 11,
+                              Attribute == "Exports" ~ 12,
+                              Attribute == "Use, Total" ~ 13,
+                              Attribute == "Ending Stocks" ~ 14,
+                              Attribute == "Avg. Farm Price" ~ 15
+                              )) %>% 
+  select(c("RowOrder", "ReportDate", "Attribute", "MarketYearProjEst", "Value", "Unit")) %>% 
+  pivot_wider(names_from = MarketYearProjEst, values_from = Value) %>% 
+  arrange(RowOrder) 
+
+wasde %>% filter(WasdeNumber == tail(wasde$WasdeNumber, 1)) %>% 
+  filter(ReportTitle == "U.S. Feed Grain and Corn Supply and Use") %>% 
+  filter(Commodity == "Corn") %>% 
+  mutate(MarketYearProjEst = paste0(substr(ReportDate,1,3), "'s ", MarketYear,ProjEstFlag)) %>%
+  mutate(RowOrder = case_when(Attribute == "Area Planted" ~ 1,
+                              Attribute == "Area Harvested" ~ 2,
+                              Attribute == "Yield per Harvested Acre" ~ 3,
+                              Attribute == "Beginning Stocks" ~ 4,
+                              Attribute == "Production" ~ 5,
+                              Attribute == "Imports" ~ 6,
+                              Attribute == "Supply, Total" ~ 7,
+                              Attribute == "Feed and Residual" ~ 8,
+                              Attribute == "Food, Seed & Industrial" ~ 9,
+                              Attribute == "Ethanol & by-products" ~ 10,
+                              Attribute == "Domestic, Total" ~ 11,
+                              Attribute == "Exports" ~ 12,
+                              Attribute == "Use, Total" ~ 13,
+                              Attribute == "Ending Stocks" ~ 14,
+                              Attribute == "Avg. Farm Price" ~ 15
+                              )) %>% 
+  select(c("RowOrder", "ReportDate", "Attribute", "MarketYearProjEst", "Value", "Unit")) %>% 
+  pivot_wider(names_from = MarketYearProjEst, values_from = Value) %>% 
+  arrange(RowOrder) %>% 
+  cbind(prevwasde[, dim(prevwasde)[2]]) %>% 
+  select(!c(RowOrder, ReportDate)) %>% 
+  select(c(1,3,4,6,5,2)) %>% 
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+# Change from Previous
+```{r}
+
+temp <- wasde %>% filter(WasdeNumber == tail(wasde$WasdeNumber, 1)) %>% 
+  filter(ReportTitle == "U.S. Feed Grain and Corn Supply and Use") %>% 
+  filter(Commodity == "Corn") %>% 
+  mutate(MarketYearProjEst = paste0(substr(ReportDate,1,3), "'s ", MarketYear,ProjEstFlag)) %>%
+  mutate(RowOrder = case_when(Attribute == "Area Planted" ~ 1,
+                              Attribute == "Area Harvested" ~ 2,
+                              Attribute == "Yield per Harvested Acre" ~ 3,
+                              Attribute == "Beginning Stocks" ~ 4,
+                              Attribute == "Production" ~ 5,
+                              Attribute == "Imports" ~ 6,
+                              Attribute == "Supply, Total" ~ 7,
+                              Attribute == "Feed and Residual" ~ 8,
+                              Attribute == "Food, Seed & Industrial" ~ 9,
+                              Attribute == "Ethanol & by-products" ~ 10,
+                              Attribute == "Domestic, Total" ~ 11,
+                              Attribute == "Exports" ~ 12,
+                              Attribute == "Use, Total" ~ 13,
+                              Attribute == "Ending Stocks" ~ 14,
+                              Attribute == "Avg. Farm Price" ~ 15
+                              )) %>% 
+  select(c("RowOrder", "ReportDate", "Attribute", "MarketYearProjEst", "Value", "Unit")) %>% 
+  pivot_wider(names_from = MarketYearProjEst, values_from = Value) %>% 
+  arrange(RowOrder) %>% 
+  select(!c(RowOrder, ReportDate, Attribute, Unit)) %>% as.matrix() 
+
+temp2 <- as.matrix(prevwasde[,5:7])
+
+as_tibble(cbind(prevwasde[, 1:4], temp - temp2)) %>% 
+ select(c(3,5,6,7,4)) %>% 
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+
+```{r fig.width = 8}
+
+new <- data_frame(
+  MarketYear = c("2022/23"), 
+  Value = c(2400))
+
+#Jan 2018 report not released due to fed govt shutdown from congressional budget standoff,
+#Pulled this number from KSU spreadsheets. Not sure where they got the fill in numbers.. 
+rep18 <- data_frame(
+  MarketYear = c("2018/19"),
+  Value = c(2066)
+)
+
+wasde %>% 
+  filter(ReportTitle == "U.S. Feed Grain and Corn Supply and Use") %>% 
+  filter(Commodity == "Corn") %>% 
+  mutate(ReportDate = str_sub(ReportDate, start=1, end = -6)) %>% 
+  filter(ReportDate == "January") %>% 
+  filter(Attribute == "Exports") %>% 
+  filter(AnnualQuarterFlag == "Annual") %>% 
+  filter(ProjEstFlag == "Proj.") %>% 
+  ggplot(aes(x = MarketYear, y = Value)) + 
+  geom_col(width = .4) +
+  geom_text(aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = rep18, aes(x = MarketYear, y = Value), width = .4) + 
+  geom_text(data = rep18, aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = new, aes(x = MarketYear, y = Value), color = colorscheme, width = .4, fill = colorscheme) +
+  geom_text(data = new, aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  theme_bw() + 
+  lims(y = c(0,3000)) + 
+  labs(x = "Marketing Year", y = "Millions of Bushels", title = "US Corn Exports")
+  
+ggsave("corn_exports.png", width = 8, height = 6)
+
+
+```
+
+```{r, fig.width = 8}
+
+ new <- data_frame(
+   MarketYear = c("2022/23"), 
+   Value = c(5375))
+#Jan 2018 report not released due to fed govt shutdown from congressional budget standoff,
+#Pulled this number from KSU spreadsheets. Not sure where they got the fill in numbers.. 
+rep18 <- data_frame(
+  MarketYear = c("2018/19"),
+  Value = c(5378)
+)
+
+wasde %>% 
+  filter(ReportTitle == "U.S. Feed Grain and Corn Supply and Use") %>% 
+  filter(Commodity == "Corn") %>% 
+  mutate(ReportDate = str_sub(ReportDate, start=1, end = -6)) %>% 
+  filter(ReportDate == "January") %>% 
+  filter(Attribute == "Ethanol for Fuel" | Attribute == "Ethanol & by-products") %>% 
+  filter(AnnualQuarterFlag == "Annual") %>% 
+  filter(ProjEstFlag == "Proj.") %>% 
+  ggplot(aes(x = MarketYear, y = Value)) + 
+  geom_col(width = .4) +
+  geom_text(aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = rep18, aes(x = MarketYear, y = Value), width = .4) + 
+  geom_text(data = rep18, aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = new, aes(x = MarketYear, y = Value), color = colorscheme, width = .4, fill = colorscheme) +
+  geom_text(data = new, aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  theme_bw() + 
+  lims(y = c(0,7000)) + 
+  labs(x = "Marketing Year", y = "Millions of Bushels", title = "Corn Used for Ethanol")
+  
+ggsave("corn_ethanol.png", width = 8, height = 6)
+
+
+```
+
+```{r, fig.width = 8}
+
+new <- data_frame(
+  MarketYear = c("2022/23"), 
+  Stocks_Use = c(10.1))
+
+#Jan 2018 report not released due to fed govt shutdown from congressional budget standoff,
+#Pulled this number from KSU spreadsheets. Not sure where they got the fill in numbers.. 
+rep18 <- data_frame(
+  MarketYear = c("2018/19"),
+  Stocks_Use = c(15.5)
+)
+
+wasde %>% 
+  filter(ReportTitle == "U.S. Feed Grain and Corn Supply and Use") %>% 
+  filter(Commodity == "Corn") %>% 
+  mutate(ReportDate = str_sub(ReportDate, start=1, end = -6)) %>% 
+  filter(ReportDate == "January") %>% 
+  filter(Attribute == "Ending Stocks" | Attribute == "Use, Total") %>% 
+  filter(AnnualQuarterFlag == "Annual") %>% 
+  filter(ProjEstFlag == "Proj.") %>% 
+  pivot_wider(names_from = "Attribute", values_from = "Value") %>% 
+  mutate(Stocks_Use = 100*`Ending Stocks`/`Use, Total`) %>% 
+  ggplot(aes(x = MarketYear, y = Stocks_Use)) + 
+  geom_col(width = .4) +
+  geom_text(aes(label = format(round(Stocks_Use, 2), n_small = 3), Stocks_Use = Stocks_Use), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = rep18, aes(x = MarketYear, y = Stocks_Use), width = .4) + 
+  geom_text(data = rep18, aes(label = format(round(Stocks_Use, 2), n_small = 2), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = new, aes(x = MarketYear, y = Stocks_Use), color = colorscheme, width = .4, fill = colorscheme) +
+  geom_text(data = new, aes(label = format(round(Stocks_Use, 5), n_small = 5), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  theme_bw() + 
+  lims(y = c(0,20)) + 
+  labs(x = "Marketing Year", y = "% of Usage", title = "U.S. Corn Ending Stock as % of Usage")
+  
+ggsave("corn_stocksuse.png", width = 8, height = 6)
+
+
+```
+
+```{r, fig.width = 8}
+
+new <- data_frame(
+  MarketYear = c("2022/23"), 
+  Stocks_Use = c(22.8))
+
+rep18 <- data_frame(
+  MarketYear = c("2018/19"),
+  Stocks_Use = c(28.8)
+)
+
+wasde %>% 
+  filter(ReportTitle == "World Corn Supply and Use") %>% 
+  filter(Commodity == "Corn") %>% 
+  mutate(ReportDate = str_sub(ReportDate, start=1, end = -6)) %>% 
+  filter(ReportDate == "January") %>% 
+  filter(Region == "World") %>% 
+  filter(Attribute == "Ending Stocks" | Attribute == "Domestic Total") %>% 
+  filter(AnnualQuarterFlag == "Annual") %>% 
+  filter(ProjEstFlag == "Proj.") %>% 
+  pivot_wider(names_from = "Attribute", values_from = "Value") %>% 
+  mutate(Stocks_Use = 100*`Ending Stocks`/`Domestic Total`) %>% 
+  ggplot(aes(x = MarketYear, y = Stocks_Use)) + 
+  geom_col(width = .4) +
+  geom_text(aes(label = format(round(Stocks_Use, 2), n_small = 3), Stocks_Use = Stocks_Use), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = rep18, aes(x = MarketYear, y = Stocks_Use), width = .4) + 
+  geom_text(data = rep18, aes(label = format(round(Stocks_Use, 2), n_small = 2), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = new, aes(x = MarketYear, y = Stocks_Use), color = colorscheme, width = .4, fill = colorscheme) +
+  geom_text(data = new, aes(label = format(round(Stocks_Use, 5), n_small = 5), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  theme_bw() + 
+  lims(y = c(0,35)) + 
+  labs(x = "Marketing Year", y = "% of Usage", title = "World Corn Ending Stock as % of Usage")
+  
+
+ggsave("corn_worldstocksuse.png", width = 8, height = 6)
+
+```
+
+# Soybeans
+
+## Soy Current Month's Table
+```{r}
+#US Soy
+prevwasde <- wasde %>% filter(WasdeNumber == (tail(wasde$WasdeNumber, 1)-1)) %>% 
+  filter(ReportTitle == "U.S. Soybeans and Products Supply and Use (Domestic Measure)") %>% 
+  filter(Commodity == "Oilseed, Soybean") %>% 
+  mutate(MarketYearProjEst = paste0(substr(ReportDate,1,3), "'s ", MarketYear,ProjEstFlag)) %>%
+  mutate(RowOrder = case_when(Attribute == "Area Planted" ~ 1,
+                              Attribute == "Area Harvested" ~ 2,
+                              Attribute == "Yield per Harvested Acre" ~ 3,
+                              Attribute == "Beginning Stocks" ~ 4,
+                              Attribute == "Production" ~ 5,
+                              Attribute == "Imports" ~ 6,
+                              Attribute == "Supply, Total" ~ 7,
+                              Attribute == "Crushings" ~ 8,
+                              Attribute == "Exports" ~ 9,
+                              Attribute == "Seed" ~ 10,
+                              Attribute == "Residual" ~ 11,
+                              Attribute == "Use, Total" ~ 12,
+                              Attribute == "Ending Stocks" ~ 13,
+                              Attribute == "Avg. Farm Price" ~ 14
+                              )) %>% 
+  select(c("RowOrder", "ReportDate", "Attribute", "MarketYearProjEst", "Value", "Unit")) %>% 
+  pivot_wider(names_from = MarketYearProjEst, values_from = Value) %>% 
+  arrange(RowOrder) 
+
+wasde %>% filter(WasdeNumber == (tail(wasde$WasdeNumber, 1))) %>% 
+  filter(ReportTitle == "U.S. Soybeans and Products Supply and Use (Domestic Measure)") %>% 
+  filter(Commodity == "Oilseed, Soybean") %>% 
+  mutate(MarketYearProjEst = paste0(substr(ReportDate,1,3), "'s ", MarketYear,ProjEstFlag)) %>%
+  mutate(RowOrder = case_when(Attribute == "Area Planted" ~ 1,
+                              Attribute == "Area Harvested" ~ 2,
+                              Attribute == "Yield per Harvested Acre" ~ 3,
+                              Attribute == "Beginning Stocks" ~ 4,
+                              Attribute == "Production" ~ 5,
+                              Attribute == "Imports" ~ 6,
+                              Attribute == "Supply, Total" ~ 7,
+                              Attribute == "Crushings" ~ 8,
+                              Attribute == "Exports" ~ 9,
+                              Attribute == "Seed" ~ 10,
+                              Attribute == "Residual" ~ 11,
+                              Attribute == "Use, Total" ~ 12,
+                              Attribute == "Ending Stocks" ~ 13,
+                              Attribute == "Avg. Farm Price" ~ 14
+                              )) %>% 
+  select(c("RowOrder", "ReportDate", "Attribute", "MarketYearProjEst", "Value", "Unit")) %>% 
+  pivot_wider(names_from = MarketYearProjEst, values_from = Value) %>% 
+  arrange(RowOrder) %>% 
+  cbind(prevwasde[, dim(prevwasde)[2]]) %>% 
+  select(!c(RowOrder, ReportDate)) %>% 
+  select(c(1,3,4,6,5,2)) %>% 
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+# Change from Previous
+```{r}
+
+temp <- wasde %>% filter(WasdeNumber == (tail(wasde$WasdeNumber, 1))) %>% 
+  filter(ReportTitle == "U.S. Soybeans and Products Supply and Use (Domestic Measure)") %>% 
+  filter(Commodity == "Oilseed, Soybean") %>% 
+  mutate(MarketYearProjEst = paste0(substr(ReportDate,1,3), "'s ", MarketYear,ProjEstFlag)) %>%
+  mutate(RowOrder = case_when(Attribute == "Area Planted" ~ 1,
+                              Attribute == "Area Harvested" ~ 2,
+                              Attribute == "Yield per Harvested Acre" ~ 3,
+                              Attribute == "Beginning Stocks" ~ 4,
+                              Attribute == "Production" ~ 5,
+                              Attribute == "Imports" ~ 6,
+                              Attribute == "Supply, Total" ~ 7,
+                              Attribute == "Crushings" ~ 8,
+                              Attribute == "Exports" ~ 9,
+                              Attribute == "Seed" ~ 10,
+                              Attribute == "Residual" ~ 11,
+                              Attribute == "Use, Total" ~ 12,
+                              Attribute == "Ending Stocks" ~ 13,
+                              Attribute == "Avg. Farm Price" ~ 14
+                              )) %>% 
+  select(c("RowOrder", "ReportDate", "Attribute", "MarketYearProjEst", "Value", "Unit")) %>% 
+  pivot_wider(names_from = MarketYearProjEst, values_from = Value) %>% 
+  arrange(RowOrder) %>% 
+  select(!c(RowOrder, ReportDate, Attribute, Unit)) %>% as.matrix() 
+
+temp2 <- as.matrix(prevwasde[,5:7])
+
+as_tibble(cbind(prevwasde[, 1:4], temp - temp2)) %>% 
+ select(c(3,5,6,7,4)) %>% 
+  kbl() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+
+```{r fig.width = 8}
+
+new <- data_frame(
+  MarketYear = c("2022/23"), 
+  Value = c(2135))
+
+#Jan 2018 report not released due to fed govt shutdown from congressional budget standoff,
+#Pulled this number from KSU spreadsheets. Not sure where they got the fill in numbers.. 
+rep18 <- data_frame(
+  MarketYear = c("2018/19"),
+  Value = c(1752)
+)
+
+
+wasde %>% 
+  filter(ReportTitle == "U.S. Soybeans and Products Supply and Use (Domestic Measure)") %>% 
+  filter(Commodity == "Oilseed, Soybean") %>% 
+  mutate(ReportDate = str_sub(ReportDate, start=1, end = -6)) %>% 
+  filter(ReportDate == "January") %>% 
+  filter(Attribute == "Exports") %>% 
+  filter(AnnualQuarterFlag == "Annual") %>% 
+  filter(ProjEstFlag == "Proj.") %>% 
+  ggplot(aes(x = MarketYear, y = Value)) + 
+  geom_col(width = .4) +
+  geom_text(aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = rep18, aes(x = MarketYear, y = Value), width = .4) + 
+  geom_text(data = rep18, aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = new, aes(x = MarketYear, y = Value), color = colorscheme, width = .4, fill = colorscheme) +
+  geom_text(data = new, aes(label = Value, Value = Value ), position = position_dodge(.9), vjust = -1) +
+  theme_bw() + 
+  lims(y = c(0,3000)) + 
+  labs(x = "Marketing Year", y = "Millions of Bushels", title = "US Soybean Exports")
+  
+
+ggsave("soy_exports.png", width = 8, height = 6)
+
+```
+
+
+
+```{r, fig.width = 8}
+
+new <- data_frame(
+  MarketYear = c("2022/23"), 
+  Stocks_Use = c(5.10))
+
+#Jan 2018 report not released due to fed govt shutdown from congressional budget standoff,
+#Pulled this number from KSU spreadsheets. Not sure where they got the fill in numbers.. 
+rep18 <- data_frame(
+  MarketYear = c("2018/19"),
+  Stocks_Use = c(22.90)
+)
+
+wasde %>% 
+  filter(ReportTitle == "U.S. Soybeans and Products Supply and Use (Domestic Measure)") %>% 
+  filter(Commodity == "Oilseed, Soybean") %>% 
+  mutate(ReportDate = str_sub(ReportDate, start=1, end = -6)) %>% 
+  filter(ReportDate == "January") %>% 
+  filter(Attribute == "Ending Stocks" | Attribute == "Use, Total") %>% 
+  filter(AnnualQuarterFlag == "Annual") %>% 
+  filter(ProjEstFlag == "Proj.") %>% 
+  pivot_wider(names_from = "Attribute", values_from = "Value") %>% 
+  mutate(Stocks_Use = 100*`Ending Stocks`/`Use, Total`) %>% 
+  ggplot(aes(x = MarketYear, y = Stocks_Use)) + 
+  geom_col(width = .4) +
+  geom_text(aes(label = format(round(Stocks_Use, 2), n_small = 3), Stocks_Use = Stocks_Use), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = rep18, aes(x = MarketYear, y = Stocks_Use), width = .4) + 
+  geom_text(data = rep18, aes(label = format(round(Stocks_Use, 2), n_small = 2), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = new, aes(x = MarketYear, y = Stocks_Use), color = colorscheme, width = .4, fill = colorscheme) +
+  geom_text(data = new, aes(label = format(round(Stocks_Use, 5), n_small = 5), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  theme_bw() + 
+  lims(y = c(0,25)) + 
+  labs(x = "Marketing Year", y = "% of Usage", title = "U.S. Soybean Ending Stock as % of Usage")
+  
+ggsave("soystocksuse.png", width = 8, height = 6)
+
+
+```
+
+```{r, fig.width = 8}
+
+new <- data_frame(
+  MarketYear = c("2022/23"), 
+  Stocks_Use = c(18.22))
+
+rep18 <- data_frame(
+  MarketYear = c("2018/19"),
+  Stocks_Use = c(33.01)
+)
+
+wasde %>% 
+  filter(ReportTitle == "World Soybean Supply and Use") %>% 
+  filter(Commodity == "Oilseed, Soybean") %>% 
+  mutate(ReportDate = str_sub(ReportDate, start=1, end = -6)) %>% 
+  filter(ReportDate == "January") %>% 
+  filter(Region == "World") %>% 
+  filter(Attribute == "Ending Stocks" | Attribute == "Domestic Total") %>% 
+  filter(AnnualQuarterFlag == "Annual") %>% 
+  filter(ProjEstFlag == "Proj.") %>% 
+  pivot_wider(names_from = "Attribute", values_from = "Value") %>% 
+  mutate(Stocks_Use = 100*`Ending Stocks`/`Domestic Total`) %>% 
+  ggplot(aes(x = MarketYear, y = Stocks_Use)) + 
+  geom_col(width = .4) +
+  geom_text(aes(label = format(round(Stocks_Use, 2), n_small = 3), Stocks_Use = Stocks_Use), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = rep18, aes(x = MarketYear, y = Stocks_Use), width = .4) + 
+  geom_text(data = rep18, aes(label = format(round(Stocks_Use, 2), n_small = 2), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  geom_col(data = new, aes(x = MarketYear, y = Stocks_Use), color = colorscheme, width = .4, fill = colorscheme) +
+  geom_text(data = new, aes(label = format(round(Stocks_Use, 5), n_small = 5), Stocks_Use = Stocks_Use ), position = position_dodge(.9), vjust = -1) +
+  theme_bw() + 
+  lims(y = c(0,35)) + 
+  labs(x = "Marketing Year", y = "% of Usage", title = "World Soybean Ending Stock as % of Usage")
+  
+ggsave("soyworldstocksuse.png", width = 8, height = 6)
+
+
+```
+
+# Intra Year exports
+For now visit "https://apps.fas.usda.gov/esrquery/esrq.aspx" to update file. Select Corn, Soybeans, All Counries, and China. Select Outstanding Sales 5 years option
+```{r, figwidth = 8}
+yyear <- Sys.Date() %>%  as.POSIXct() %>% year()-1
+expData <- 
+readxl::read_excel("ExportSalesDataByCommodity.xlsx", skip = 6) %>% 
+  filter(!is.na(Commodity)) %>% 
+  filter(Commodity == "Corn") %>% 
+  select(!c(2,4,12)) %>% 
+  pivot_longer(cols = !c(Commodity, Date, Country), names_to = "Year", values_to = "Value") %>% 
+  group_by(Year) %>% 
+  summarize(Value = sum(Value)) %>%
+  mutate(
+    Year1 = case_when(
+      Year == "Out. Sales CMY" ~ yyear,
+      Year == "1 Year Ago" ~ yyear - 1,
+      Year == "2 Year Ago" ~ yyear - 2,
+      Year == "3 Year Ago" ~ yyear - 3,
+      Year == "4 Year Ago" ~ yyear - 4,
+      Year == "5 Year Ago" ~ yyear - 5
+    )) %>% 
+  mutate(Value = Value/1000) 
+
+CexpData <- readxl::read_excel("ExportSalesDataByCommodity.xlsx", skip = 6) %>% 
+  filter(!is.na(Commodity)) %>% 
+  filter(Commodity == "Corn") %>% 
+  filter(Country == "CHINA, PEOPLES REPUBLIC OF") %>% 
+  select(!c(2,4,12)) %>% 
+  pivot_longer(cols = !c(Commodity, Date, Country), names_to = "Year", values_to = "Value") %>% 
+  mutate(
+    Year1 = case_when(
+      Year == "Out. Sales CMY" ~ year(Date),
+      Year == "1 Year Ago" ~ year(Date) - 1,
+      Year == "2 Year Ago" ~ year(Date) - 2,
+      Year == "3 Year Ago" ~ year(Date) - 3,
+      Year == "4 Year Ago" ~ year(Date) - 4,
+      Year == "5 Year Ago" ~ year(Date) - 5
+    )) %>% 
+  mutate(Value = Value/1000) 
+
+expd <- inner_join(expData, CexpData, by = "Year1") %>% 
+  select(c(Year1, Value.x, Value.y)) %>% 
+  mutate(`Total MY Committments to World w.o. China` = Value.x - Value.y) %>% 
+  rename(`Total MY Committments to China` = Value.y) %>% 
+  select(c(Year1, `Total MY Committments to China`, `Total MY Committments to World w.o. China`)) %>% 
+  pivot_longer(!Year1, names_to = "Region", values_to = "Value")
+  
+expd %>% ggplot(aes(x = Year1, y = Value, fill = Region)) + 
+  geom_col(width = .4, position = 'dodge') +
+  theme_bw() +
+  theme(legend.position="bottom") +
+  scale_x_continuous(breaks=seq(2016,2021,1)) +
+   scale_fill_manual(values=c(colorscheme, 'black')) +
+  labs(x = "Marketing Year", y = "1,000 MT", title = "Current Marketing Year U.S. Corn Export Commitments", subtitle = "China vs. All Other Destinations")
+
+  ggsave("corn_exportscurrentyear.png", width = 8, height = 6)
+
+
+```
+
+
+```{r, figwidth = 8}
+yyear <- Sys.Date() %>%  as.POSIXct() %>% year()-1
+expData <- 
+readxl::read_excel("ExportSalesDataByCommodity.xlsx", skip = 6) %>% 
+  filter(!is.na(Commodity)) %>% 
+  filter(Commodity == "Soybeans") %>% 
+  select(!c(2,4,12)) %>% 
+  pivot_longer(cols = !c(Commodity, Date, Country), names_to = "Year", values_to = "Value") %>% 
+  group_by(Year) %>% 
+  summarize(Value = sum(Value)) %>%
+  mutate(
+    Year1 = case_when(
+      Year == "Out. Sales CMY" ~ yyear,
+      Year == "1 Year Ago" ~ yyear - 1,
+      Year == "2 Year Ago" ~ yyear - 2,
+      Year == "3 Year Ago" ~ yyear - 3,
+      Year == "4 Year Ago" ~ yyear - 4,
+      Year == "5 Year Ago" ~ yyear - 5
+    )) %>% 
+  mutate(Value = Value/1000) 
+
+CexpData <- readxl::read_excel("ExportSalesDataByCommodity.xlsx", skip = 6) %>% 
+  filter(!is.na(Commodity)) %>% 
+  filter(Commodity == "Soybeans") %>% 
+  filter(Country == "CHINA, PEOPLES REPUBLIC OF") %>% 
+  select(!c(2,4,12)) %>% 
+  pivot_longer(cols = !c(Commodity, Date, Country), names_to = "Year", values_to = "Value") %>% 
+  mutate(
+    Year1 = case_when(
+      Year == "Out. Sales CMY" ~ year(Date),
+      Year == "1 Year Ago" ~ year(Date) - 1,
+      Year == "2 Year Ago" ~ year(Date) - 2,
+      Year == "3 Year Ago" ~ year(Date) - 3,
+      Year == "4 Year Ago" ~ year(Date) - 4,
+      Year == "5 Year Ago" ~ year(Date) - 5
+    )) %>% 
+  mutate(Value = Value/1000) 
+
+expd <- inner_join(expData, CexpData, by = "Year1") %>% 
+  select(c(Year1, Value.x, Value.y)) %>% 
+  mutate(`Total MY Committments to World w.o. China` = Value.x - Value.y) %>% 
+  rename(`Total MY Committments to China` = Value.y) %>% 
+  select(c(Year1, `Total MY Committments to China`, `Total MY Committments to World w.o. China`)) %>% 
+  pivot_longer(!Year1, names_to = "Region", values_to = "Value")
+  
+expd %>% ggplot(aes(x = Year1, y = Value, fill = Region)) + 
+  geom_col(width = .4, position = 'dodge') +
+  theme_bw() +
+  theme(legend.position="bottom") +
+  scale_x_continuous(breaks=seq(2016,2021,1)) +
+   scale_fill_manual(values=c(colorscheme, 'black')) +
+  labs(x = "Marketing Year", y = "1,000 MT", title = "Current Marketing Year U.S. Soybean Export Commitments", subtitle = "China vs. All Other Destinations")
+
+  
+
+ggsave("soy_exportscurrentyear.png", width = 8, height = 6)
+```
+
+```{r}
+#file update here: https://www.card.iastate.edu/research/biorenewables/tools/hist_eth_gm.aspx
+
+read.csv("hist_eth_gm.csv", skip = 2) %>% 
+  mutate(Date = as.Date(Date, "%m/%d/%Y")) %>% 
+  select(c(1, 5)) %>% 
+  rename(`Return Over Opeating Cost per gallon` = "Return.Over.Operating.Costs....gallon.") %>% 
+  filter(Date > as.Date('2019-01-01')) %>% 
+  ggplot(aes(x = Date, y = `Return Over Opeating Cost per gallon`)) +
+  geom_line() +
+  theme_bw() +
+  labs(x = "", y = "Return Over Opeating Cost $/gal", title = "Estimated Daily Ethanol Plant Margins")
+
+ggsave("corn_ethanolmargins.png", width = 8, height = 6)
+
+```
+
+
+
