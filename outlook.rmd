@@ -23,13 +23,13 @@ Check "https://www.usda.gov/oce/commodity-markets/wasde/historical-wasde-report-
 # Previous Years
 key <- '9C32CCDF-EFFD-4BCF-A943-5A5C33FD7046'
 
-download.file("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2010-04-to-2015-12.zip","wasde_old.zip")
-unzip("wasde_old.zip")
+#download.file("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2010-04-to-2015-12.zip","wasde_old.zip")
+#unzip("wasde_old.zip")
 wasde_old <- read.csv("oce-wasde-report-data-2010-04-to-2015-12.csv")
 
 
-download.file("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2016-01-to-2020-12.zip","wasde.zip")
-unzip("wasde.zip")
+#download.file("https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-2016-01-to-2020-12.zip","wasde.zip")
+#unzip("wasde.zip")
 wasde <- read.csv("oce-wasde-report-data-2016-01-to-2020-12.csv")
 
 # Current Year
@@ -58,6 +58,61 @@ wasde <- wasde_old %>%
   
 
 tail(wasde$WasdeNumber, 1)
+```
+
+chatgpt's help with better downloading
+```{r}
+
+library(tidyverse)
+library(lubridate)
+library(curl)
+library(readr)
+
+# Force HTTP/1.1 (avoids the HTTP/2 framing-layer stream error) and DO NOT swallow errors.
+# If a URL fails, the script will stop and you’ll see exactly which one.
+read_usda_csv <- function(url) {
+  message("Fetching: ", url)
+
+  h <- curl::new_handle()
+  curl::handle_setopt(
+    h,
+    http_version  = 2,              # CURL_HTTP_VERSION_1_1
+    followlocation = TRUE,
+    timeout       = 120,
+    useragent     = "R (libcurl)"
+  )
+
+  con <- curl::curl(url, handle = h)
+  on.exit(try(close(con), silent = TRUE), add = TRUE)
+
+  readr::read_csv(con, show_col_types = FALSE, progress = FALSE)
+}
+
+# Local historic files
+wasde_old  <- readr::read_csv("oce-wasde-report-data-2010-04-to-2015-12.csv", show_col_types = FALSE)
+wasde_1620 <- readr::read_csv("oce-wasde-report-data-2016-01-to-2020-12.csv", show_col_types = FALSE)
+
+# Monthly files: 2021-01 through 2025-12
+months <- seq(ymd("2021-01-01"), ymd("2025-12-01"), by = "1 month")
+
+urls <- sprintf(
+  "https://www.usda.gov/sites/default/files/documents/oce-wasde-report-data-%s.csv",
+  format(months, "%Y-%m")
+)
+
+# Download & combine (will stop on the first failing URL and print it)
+wasde_recent <- purrr::map_dfr(
+  urls,
+  read_usda_csv
+) %>%
+  mutate(source_month = rep(format(months, "%Y-%m"),
+                            times = length(urls) / length(months))) # safe no-op-ish label
+# (If you want a true per-row month label, we can do it after we see the structure/row counts.)
+
+wasde <- bind_rows(wasde_old, wasde_1620, wasde_recent)
+
+tail(wasde$WasdeNumber, 1)
+
 ```
 
 
