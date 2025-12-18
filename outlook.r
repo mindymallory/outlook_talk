@@ -557,3 +557,32 @@ if (file.exists("hist_eth_gm.csv")) {
 }
 
 print("Script Complete.")
+
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+url_milho <- "https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/series-historicas/graos/milho/milhototalseriehist.xls/@@download/file"
+
+tmp <- tempfile(fileext = ".xls")
+download.file(url_milho, tmp, mode = "wb")
+
+milho_prod <- read_excel(tmp, sheet = "Produção", col_names = FALSE)
+
+# header row (contains the safra labels like 1976/77 ... 2025/26 Previsão)
+hdr <- as.character(unlist(milho_prod[5, ]))  # row 5 in Excel = 1-indexed
+milho_prod2 <- milho_prod
+names(milho_prod2) <- hdr
+
+milho_brasil <- milho_prod2 %>%
+  filter(`REGIÃO/UF` == "BRASIL") %>%
+  pivot_longer(-`REGIÃO/UF`, names_to = "Safra", values_to = "Production_kt") %>%
+  mutate(
+    YearStart = as.integer(str_extract(Safra, "^\\d{4}")),
+    Production_mmt = as.numeric(Production_kt) / 1000
+  ) %>%
+  filter(!is.na(YearStart)) %>%
+  select(YearStart, Safra, Production_mmt) %>% 
+  ggplot(aes(x = YearStart + 1, y = Production_mmt)) + geom_line(color = purduegold, size = .75) + theme_bw() 
+
