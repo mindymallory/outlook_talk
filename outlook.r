@@ -112,6 +112,7 @@ if (nrow(corn_export_val) > 0) {
     )
     rep18_corn <- data_frame(MarketYear = c("2018/19"), Value = c(2066))
 
+
     p1 <- wasde %>%
         filter(ReportTitle == "U.S. Feed Grain and Corn Supply and Use") %>%
         filter(Commodity == "Corn") %>%
@@ -564,30 +565,32 @@ library(tidyr)
 library(stringr)
 
 url_milho <- "https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/series-historicas/graos/milho/milhototalseriehist.xls/@@download/file"
-#https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/series-historicas/graos/soja
+# https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/series-historicas/graos/soja
 tmp <- tempfile(fileext = ".xls")
 download.file(url_milho, tmp, mode = "wb")
 
 milho_prod <- read_excel(tmp, sheet = "Produção", col_names = FALSE)
 
 # header row (contains the safra labels like 1976/77 ... 2025/26 Previsão)
-hdr <- as.character(unlist(milho_prod[5, ]))  # row 5 in Excel = 1-indexed
+hdr <- as.character(unlist(milho_prod[5, ])) # row 5 in Excel = 1-indexed
 milho_prod2 <- milho_prod
 names(milho_prod2) <- hdr
 
 milho_brasil <- milho_prod2 %>%
-  filter(`REGIÃO/UF` == "BRASIL") %>%
-  pivot_longer(-`REGIÃO/UF`, names_to = "Safra", values_to = "Production_kt") %>%
-  mutate(
-    YearStart = as.integer(str_extract(Safra, "^\\d{4}")),
-    Production_mmt = as.numeric(Production_kt) / 1000
-  ) %>%
-  filter(!is.na(YearStart)) %>%
-  select(YearStart, Safra, Production_mmt) %>% 
-  ggplot(aes(x = YearStart + 1, y = Production_mmt)) + geom_line(color = purduegold, size = .75) + theme_bw() 
+    filter(`REGIÃO/UF` == "BRASIL") %>%
+    pivot_longer(-`REGIÃO/UF`, names_to = "Safra", values_to = "Production_kt") %>%
+    mutate(
+        YearStart = as.integer(str_extract(Safra, "^\\d{4}")),
+        Production_mmt = as.numeric(Production_kt) / 1000
+    ) %>%
+    filter(!is.na(YearStart)) %>%
+    select(YearStart, Safra, Production_mmt) %>%
+    ggplot(aes(x = YearStart + 1, y = Production_mmt)) +
+    geom_line(color = purduegold, size = .75) +
+    theme_bw()
 
 
-read.csv('export_data_all_years_concat.csv')
+read.csv("export_data_all_years_concat.csv")
 
 
 library(tidyverse)
@@ -596,51 +599,53 @@ library(lubridate)
 purduegold <- "#CEB888"
 
 weekly_my <- read.csv("export_data_all_years_concat.csv") %>%
-  select(Grain, Thursday, Pounds, MKT.YR) %>%
-  filter(Grain == "CORN") %>%
-  mutate(
-    Thursday = ymd(Thursday),
-    MY_start_year = 2000 + as.integer(substr(as.character(MKT.YR), 1, 2)),
-    MY_start_date = ymd(paste0(MY_start_year, "-09-01")),
-    Week = as.integer(floor(as.numeric(Thursday - MY_start_date) / 7) + 1),
-    MY_label = paste0(MY_start_year, "/", substr(MY_start_year + 1, 3, 4))
-  ) %>%
-  filter(Week >= 1, Week <= 53) %>%
-  group_by(MY_label, Week) %>%
-  summarise(
-    Total_mil_bu = sum(Pounds, na.rm = TRUE) / 56 / 1e6,
-    .groups = "drop"
-  )
+    select(Grain, Thursday, Pounds, MKT.YR) %>%
+    filter(Grain == "CORN") %>%
+    mutate(
+        Thursday = ymd(Thursday),
+        MY_start_year = 2000 + as.integer(substr(as.character(MKT.YR), 1, 2)),
+        MY_start_date = ymd(paste0(MY_start_year, "-09-01")),
+        Week = as.integer(floor(as.numeric(Thursday - MY_start_date) / 7) + 1),
+        MY_label = paste0(MY_start_year, "/", substr(MY_start_year + 1, 3, 4))
+    ) %>%
+    filter(Week >= 1, Week <= 53) %>%
+    group_by(MY_label, Week) %>%
+    summarise(
+        Total_mil_bu = sum(Pounds, na.rm = TRUE) / 56 / 1e6,
+        .groups = "drop"
+    )
 
 cur_label <- "2025/26"
 
 avg_line <- weekly_my %>%
-  filter(MY_label != cur_label) %>%
-  group_by(Week) %>%
-  summarise(Total_mil_bu = mean(Total_mil_bu, na.rm = TRUE), .groups = "drop") %>%
-  mutate(Series = "Avg (ex-2025/26)")
+    filter(MY_label != cur_label) %>%
+    group_by(Week) %>%
+    summarise(Total_mil_bu = mean(Total_mil_bu, na.rm = TRUE), .groups = "drop") %>%
+    mutate(Series = "Avg (ex-2025/26)")
 
 cur_line <- weekly_my %>%
-  filter(MY_label == cur_label) %>%
-  transmute(Week, Total_mil_bu, Series = "2025/26")
+    filter(MY_label == cur_label) %>%
+    transmute(Week, Total_mil_bu, Series = "2025/26")
 
 plot_df <- bind_rows(avg_line, cur_line)
 
 ggplot(plot_df, aes(x = Week, y = Total_mil_bu, color = Series)) +
-  geom_line(linewidth = 0.95) +
-  scale_color_manual(values = c("Avg (ex-2025/26)" = "black",
-                                "2025/26" = purduegold)) +
-  theme_bw() +
-  theme(
-    legend.position = "top",
-    legend.title = element_blank(),
-    panel.grid.minor = element_blank()
-  ) +
-  labs(
-    x = "Week of marketing year (Sep 1 = Week 1)",
-    y = "Weekly total (million bushels)",
-    title = "Corn weekly export pace: 2025/26 vs average of prior years"
-  )
+    geom_line(linewidth = 0.95) +
+    scale_color_manual(values = c(
+        "Avg (ex-2025/26)" = "black",
+        "2025/26" = purduegold
+    )) +
+    theme_bw() +
+    theme(
+        legend.position = "top",
+        legend.title = element_blank(),
+        panel.grid.minor = element_blank()
+    ) +
+    labs(
+        x = "Week of marketing year (Sep 1 = Week 1)",
+        y = "Weekly total (million bushels)",
+        title = "Corn weekly export pace: 2025/26 vs average of prior years"
+    )
 ggsave("corn_weekly_exports_2025_26.png", width = 8, height = 6)
 
 
@@ -650,50 +655,52 @@ library(lubridate)
 purduegold <- "#CEB888"
 
 weekly_my <- read.csv("export_data_all_years_concat.csv") %>%
-  select(Grain, Thursday, Pounds, MKT.YR) %>%
-  filter(Grain == "SOYBEANS") %>%
-  mutate(
-    Thursday = ymd(Thursday),
-    MY_start_year = 2000 + as.integer(substr(as.character(MKT.YR), 1, 2)),
-    MY_start_date = ymd(paste0(MY_start_year, "-09-01")),
-    Week = as.integer(floor(as.numeric(Thursday - MY_start_date) / 7) + 1),
-    MY_label = paste0(MY_start_year, "/", substr(MY_start_year + 1, 3, 4))
-  ) %>%
-  filter(Week >= 1, Week <= 53) %>%
-  group_by(MY_label, Week) %>%
-  summarise(
-    Total_mil_bu = sum(Pounds, na.rm = TRUE) / 56 / 1e6,
-    .groups = "drop"
-  )
+    select(Grain, Thursday, Pounds, MKT.YR) %>%
+    filter(Grain == "SOYBEANS") %>%
+    mutate(
+        Thursday = ymd(Thursday),
+        MY_start_year = 2000 + as.integer(substr(as.character(MKT.YR), 1, 2)),
+        MY_start_date = ymd(paste0(MY_start_year, "-09-01")),
+        Week = as.integer(floor(as.numeric(Thursday - MY_start_date) / 7) + 1),
+        MY_label = paste0(MY_start_year, "/", substr(MY_start_year + 1, 3, 4))
+    ) %>%
+    filter(Week >= 1, Week <= 53) %>%
+    group_by(MY_label, Week) %>%
+    summarise(
+        Total_mil_bu = sum(Pounds, na.rm = TRUE) / 56 / 1e6,
+        .groups = "drop"
+    )
 
 cur_label <- "2025/26"
 
 avg_line <- weekly_my %>%
-  filter(MY_label != cur_label) %>%
-  group_by(Week) %>%
-  summarise(Total_mil_bu = mean(Total_mil_bu, na.rm = TRUE), .groups = "drop") %>%
-  mutate(Series = "Avg (ex-2025/26)")
+    filter(MY_label != cur_label) %>%
+    group_by(Week) %>%
+    summarise(Total_mil_bu = mean(Total_mil_bu, na.rm = TRUE), .groups = "drop") %>%
+    mutate(Series = "Avg (ex-2025/26)")
 
 cur_line <- weekly_my %>%
-  filter(MY_label == cur_label) %>%
-  transmute(Week, Total_mil_bu, Series = "2025/26")
+    filter(MY_label == cur_label) %>%
+    transmute(Week, Total_mil_bu, Series = "2025/26")
 
 plot_df <- bind_rows(avg_line, cur_line)
 
 ggplot(plot_df, aes(x = Week, y = Total_mil_bu, color = Series)) +
-  geom_line(linewidth = 0.95) +
-  scale_color_manual(values = c("Avg (ex-2025/26)" = "black",
-                                "2025/26" = purduegold)) +
-  theme_bw() +
-  theme(
-    legend.position = "top",
-    legend.title = element_blank(),
-    panel.grid.minor = element_blank()
-  ) +
-  labs(
-    x = "Week of marketing year (Sep 1 = Week 1)",
-    y = "Weekly total (million bushels)",
-    title = "Soybeans weekly export pace: 2025/26 vs average of prior years"
-  )
+    geom_line(linewidth = 0.95) +
+    scale_color_manual(values = c(
+        "Avg (ex-2025/26)" = "black",
+        "2025/26" = purduegold
+    )) +
+    theme_bw() +
+    theme(
+        legend.position = "top",
+        legend.title = element_blank(),
+        panel.grid.minor = element_blank()
+    ) +
+    labs(
+        x = "Week of marketing year (Sep 1 = Week 1)",
+        y = "Weekly total (million bushels)",
+        title = "Soybeans weekly export pace: 2025/26 vs average of prior years"
+    )
 
 ggsave("soybeans_weekly_exports_2025_26.png", width = 8, height = 6)
